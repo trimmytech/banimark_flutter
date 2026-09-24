@@ -20,3 +20,4 @@ export 'src/emoji.dart';
 export 'src/markdown.dart';
 export 'src/chat_widget.dart';
 export 'src/launcher.dart';
+export 'src/tour.dart';

@@ -54,6 +54,15 @@ class BanimarkTheme {
   final String deleteButton;
   final String cancelLabel;
   final String deletedNotice;
+  /// The first-run tour (`BanimarkChat(showTour: true)`): one line per spot,
+  /// and its buttons.
+  final String tourEmoji;
+  final String tourAttach;
+  final String tourSend;
+  final String tourDelete;
+  final String tourNext;
+  final String tourDone;
+  final String tourSkip;
 
   const BanimarkTheme({
     required this.primary,
@@ -100,6 +109,13 @@ class BanimarkTheme {
     this.deleteButton = 'Delete',
     this.cancelLabel = 'Cancel',
     this.deletedNotice = 'Your conversation was deleted.',
+    this.tourEmoji = 'Add an emoji to your message.',
+    this.tourAttach = 'Attach a photo or a file - a screenshot helps us help you.',
+    this.tourSend = 'Type your question and tap here to send it.',
+    this.tourDelete = 'Delete this conversation whenever you like.',
+    this.tourNext = 'Next',
+    this.tourDone = 'Got it',
+    this.tourSkip = 'Skip',
   });
 
   static const BanimarkTheme light = BanimarkTheme(
@@ -160,6 +176,7 @@ class BanimarkTheme {
     String? handoverLabel, String? guestTitle, String? guestHint, String? guestNameLabel, String? guestEmailLabel,
     String? guestButton, String? retryLabel, String? loadEarlierLabel, String? greeting, Widget? avatar, Widget? botAvatar, Widget? agentAvatar, IconData? sendIcon,
     String? deleteTitle, String? deleteBody, String? deleteButton, String? cancelLabel, String? deletedNotice,
+    String? tourEmoji, String? tourAttach, String? tourSend, String? tourDelete, String? tourNext, String? tourDone, String? tourSkip,
   }) =>
       BanimarkTheme(
         primary: primary ?? this.primary, onPrimary: onPrimary ?? this.onPrimary, background: background ?? this.background,
@@ -181,5 +198,8 @@ class BanimarkTheme {
         deleteTitle: deleteTitle ?? this.deleteTitle, deleteBody: deleteBody ?? this.deleteBody,
         deleteButton: deleteButton ?? this.deleteButton, cancelLabel: cancelLabel ?? this.cancelLabel,
         deletedNotice: deletedNotice ?? this.deletedNotice,
+        tourEmoji: tourEmoji ?? this.tourEmoji, tourAttach: tourAttach ?? this.tourAttach,
+        tourSend: tourSend ?? this.tourSend, tourDelete: tourDelete ?? this.tourDelete,
+        tourNext: tourNext ?? this.tourNext, tourDone: tourDone ?? this.tourDone, tourSkip: tourSkip ?? this.tourSkip,
       );
 }

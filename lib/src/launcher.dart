@@ -80,6 +80,8 @@ class BanimarkLauncher extends StatefulWidget {
   final bool emoji;
   final bool attachments;
   final void Function(Uri uri)? onOpenLink;
+  /// The first-run tour of the chat's buttons (see [BanimarkChat.showTour]).
+  final bool showTour;
 
   const BanimarkLauncher({
     super.key,
@@ -104,6 +106,7 @@ class BanimarkLauncher extends StatefulWidget {
     this.emoji = true,
     this.attachments = true,
     this.onOpenLink,
+    this.showTour = false,
   });
 
   static const Key bubbleKey = Key('banimark-launcher');
@@ -242,6 +245,7 @@ class _BanimarkLauncherState extends State<BanimarkLauncher> {
                 emoji: widget.emoji,
                 attachments: widget.attachments,
                 onOpenLink: widget.onOpenLink,
+                showTour: widget.showTour,
                 onClose: () => Navigator.of(ctx).pop(),
               ),
             ),

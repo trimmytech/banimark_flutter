@@ -10,6 +10,7 @@ import 'theme.dart';
 import 'appearance.dart';
 import 'emoji.dart';
 import 'markdown.dart';
+import 'tour.dart';
 
 /// Signature for replacing a bubble entirely.
 typedef BanimarkBubbleBuilder = Widget Function(BuildContext context, BanimarkMessage message, BanimarkTheme theme);
@@ -52,6 +53,24 @@ class BanimarkChat extends StatefulWidget {
   /// title, greeting, light/dark) and apply it over [theme]/[themeMode].
   final bool followAdminAppearance;
 
+  /// First time the chat opens on a device, point out the emoji, paperclip,
+  /// send and delete buttons, one at a time. Each spot is shown once; the bin
+  /// waits until there is a conversation to delete. Texts are on [BanimarkTheme]
+  /// (`tourEmoji`, `tourAttach`, ...).
+  final bool showTour;
+
+  /// Device storage key for which tour spots were seen. Reset it with
+  /// `BanimarkChat.resetTour()` to show the tour again.
+  final String tourStorageKey;
+
+  static const String defaultTourKey = 'banimark_tour_seen';
+
+  /// Show the tour again next time the chat opens.
+  static Future<void> resetTour([String storageKey = defaultTourKey]) => BanimarkTourMemory(storageKey).reset();
+
+  static const Key emojiKey = Key('banimark-emoji');
+  static const Key attachKey = Key('banimark-attach');
+
   const BanimarkChat({
     super.key,
     required this.config,
@@ -67,6 +86,8 @@ class BanimarkChat extends StatefulWidget {
     this.emoji = true,
     this.attachments = true,
     this.onOpenLink,
+    this.showTour = false,
+    this.tourStorageKey = defaultTourKey,
   });
 
   @override
@@ -81,6 +102,15 @@ class _BanimarkChatState extends State<BanimarkChat> {
   final _focus = FocusNode();
   BanimarkMode? _lastMode;
   bool _emojiOpen = false;
+
+  // what the tour points at
+  final _emojiSpot = GlobalKey(debugLabel: 'banimark-tour-emoji');
+  final _attachSpot = GlobalKey(debugLabel: 'banimark-tour-attach');
+  final _sendSpot = GlobalKey(debugLabel: 'banimark-tour-send');
+  final _deleteSpot = GlobalKey(debugLabel: 'banimark-tour-delete');
+  OverlayEntry? _tour;
+  Set<String>? _tourSeen;
+  bool _tourChecking = false;
 
   @override
   void initState() {
@@ -175,8 +205,50 @@ class _BanimarkChatState extends State<BanimarkChat> {
     });
   }
 
+  /// After a frame: any spot on screen that this device has not seen yet? Only
+  /// when the chat is at rest - not loading, no keyboard, no reply on its way.
+  Future<void> _maybeTour() async {
+    if (!widget.showTour || _tour != null || _tourChecking || !mounted) return;
+    _tourChecking = true;
+    try {
+      _tourSeen ??= await BanimarkTourMemory(widget.tourStorageKey).seen();
+      if (!mounted || _tour != null) return;
+      if (!_lookReady || _c.loading || _c.thinking || MediaQuery.viewInsetsOf(context).bottom > 0) return;
+      final t = _t;
+      final steps = [
+        BanimarkTourStep(id: 'emoji', target: _emojiSpot, text: t.tourEmoji),
+        BanimarkTourStep(id: 'attach', target: _attachSpot, text: t.tourAttach),
+        BanimarkTourStep(id: 'send', target: _sendSpot, text: t.tourSend),
+        BanimarkTourStep(id: 'delete', target: _deleteSpot, text: t.tourDelete),
+      ].where((s) => !_tourSeen!.contains(s.id) && s.target.currentContext != null).toList();
+      if (steps.isEmpty) return;
+      final overlay = Overlay.maybeOf(context, rootOverlay: true);
+      if (overlay == null) return;
+      _focus.unfocus();
+      _tour = OverlayEntry(
+        builder: (_) => BanimarkTourOverlay(
+          steps: steps,
+          theme: t,
+          onFinish: (skipped) {
+            _tour?.remove();
+            _tour = null;
+            // skipping means "no tour", including the spots still to come
+            final ids = skipped ? const ['emoji', 'attach', 'send', 'delete'] : steps.map((s) => s.id);
+            _tourSeen!.addAll(ids);
+            BanimarkTourMemory(widget.tourStorageKey).markSeen(ids);
+          },
+        ),
+      );
+      overlay.insert(_tour!);
+    } finally {
+      _tourChecking = false;
+    }
+  }
+
   @override
   void dispose() {
+    _tour?.remove();
+    _tour = null;
     _c.removeListener(_onChange);
     if (_ownsController) _c.dispose();
     _input.dispose();
@@ -197,6 +269,7 @@ class _BanimarkChatState extends State<BanimarkChat> {
 
   Widget _body(BuildContext context) {
     final t = _t;
+    if (widget.showTour && _tour == null) WidgetsBinding.instance.addPostFrameCallback((_) => _maybeTour());
     if (!_lookReady) {
       return Material(
         color: t.background,
@@ -232,7 +305,7 @@ class _BanimarkChatState extends State<BanimarkChat> {
       color: t.background,
       child: Column(
         children: [
-          if (widget.showHeader) _Header(theme: t, mode: _c.mode, onClose: widget.onClose, onDelete: _c.sessionId.isEmpty ? null : () => _confirmDelete(t)),
+          if (widget.showHeader) _Header(theme: t, mode: _c.mode, onClose: widget.onClose, deleteSpot: _deleteSpot, onDelete: _c.sessionId.isEmpty ? null : () => _confirmDelete(t)),
           Expanded(
             child: _c.loading
                 ? Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: t.primary)))
@@ -248,6 +321,7 @@ class _BanimarkChatState extends State<BanimarkChat> {
               onEmoji: widget.emoji ? () => setState(() => _emojiOpen = !_emojiOpen) : null,
               onAttach: widget.attachments ? _pickFile : null,
               emojiOpen: _emojiOpen,
+              emojiSpot: _emojiSpot, attachSpot: _attachSpot, sendSpot: _sendSpot,
             ),
           if (_emojiOpen && widget.emoji)
             BanimarkEmojiPicker(theme: t, onPick: (e) {
@@ -381,7 +455,8 @@ class _Header extends StatelessWidget {
   final VoidCallback? onClose;
   /// null = nothing to delete yet (no conversation) - the bin is not shown
   final VoidCallback? onDelete;
-  const _Header({required this.theme, required this.mode, this.onClose, this.onDelete});
+  final GlobalKey? deleteSpot;
+  const _Header({required this.theme, required this.mode, this.onClose, this.onDelete, this.deleteSpot});
 
   @override
   Widget build(BuildContext context) {
@@ -422,7 +497,7 @@ class _Header extends StatelessWidget {
           ]),
         ),
         if (onDelete != null)
-          IconButton(key: const Key('banimark-delete'), tooltip: theme.deleteTitle.replaceAll('?', ''), onPressed: onDelete, icon: Icon(Icons.delete_outline_rounded, color: theme.onPrimary)),
+          KeyedSubtree(key: deleteSpot, child: IconButton(key: const Key('banimark-delete'), tooltip: theme.deleteTitle.replaceAll('?', ''), onPressed: onDelete, icon: Icon(Icons.delete_outline_rounded, color: theme.onPrimary))),
         if (onClose != null) IconButton(onPressed: onClose, icon: Icon(Icons.close_rounded, color: theme.onPrimary)),
       ]),
     );
@@ -593,6 +668,8 @@ class _ErrorBar extends StatelessWidget {
       );
 }
 
+/// The message bar: emoji on the left and paperclip on the right INSIDE the
+/// box, so the text gets the whole width; the send button beside it.
 class _Composer extends StatelessWidget {
   final BanimarkTheme theme;
   final TextEditingController controller;
@@ -603,46 +680,73 @@ class _Composer extends StatelessWidget {
   final VoidCallback? onEmoji;
   final VoidCallback? onAttach;
   final bool emojiOpen;
+  final GlobalKey? emojiSpot, attachSpot, sendSpot;
   const _Composer({required this.theme, required this.controller, required this.focus, required this.onSend, required this.busy,
-      this.onTyping, this.onEmoji, this.onAttach, this.emojiOpen = false});
+      this.onTyping, this.onEmoji, this.onAttach, this.emojiOpen = false, this.emojiSpot, this.attachSpot, this.sendSpot});
+
+  Widget _inBox(Key key, GlobalKey? spot, String tip, IconData icon, VoidCallback onTap) => KeyedSubtree(
+        key: spot,
+        child: IconButton(
+          key: key,
+          onPressed: onTap,
+          tooltip: tip,
+          visualDensity: VisualDensity.compact,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints.tightFor(width: 42, height: 46),
+          icon: Icon(icon, color: theme.muted, size: 23),
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.fromLTRB(12, 8, 8, 8 + MediaQuery.of(context).padding.bottom),
+      padding: EdgeInsets.fromLTRB(10, 8, 10, 8 + MediaQuery.of(context).padding.bottom),
       decoration: BoxDecoration(color: theme.surface, border: Border(top: BorderSide(color: theme.border))),
       child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-        if (onEmoji != null)
-          IconButton(onPressed: onEmoji, tooltip: 'Emoji',
-              icon: Icon(emojiOpen ? Icons.keyboard_rounded : Icons.emoji_emotions_outlined, color: theme.muted)),
-        if (onAttach != null)
-          IconButton(onPressed: onAttach, tooltip: 'Attach a file', icon: Icon(Icons.attach_file_rounded, color: theme.muted)),
         Expanded(
           child: Container(
             decoration: BoxDecoration(color: theme.background, borderRadius: BorderRadius.circular(theme.inputRadius), border: Border.all(color: theme.border)),
-            child: TextField(
-              controller: controller,
-              focusNode: focus,
-              minLines: 1,
-              maxLines: 6,
-              // Enter adds a line; the button sends
-              keyboardType: TextInputType.multiline,
-              textInputAction: TextInputAction.newline,
-              textCapitalization: TextCapitalization.sentences,
-              onChanged: (_) => onTyping?.call(),
-              style: TextStyle(color: theme.text, fontSize: 15),
-              decoration: InputDecoration(
-                hintText: theme.placeholder,
-                hintStyle: TextStyle(color: theme.muted),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            // icons sit on the last line as the text grows
+            child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              if (onEmoji != null)
+                Padding(
+                  padding: const EdgeInsets.only(left: 4),
+                  child: _inBox(BanimarkChat.emojiKey, emojiSpot, 'Emoji',
+                      emojiOpen ? Icons.keyboard_rounded : Icons.emoji_emotions_outlined, onEmoji!),
+                ),
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  focusNode: focus,
+                  minLines: 1,
+                  maxLines: 6,
+                  // Enter adds a line; the button sends
+                  keyboardType: TextInputType.multiline,
+                  textInputAction: TextInputAction.newline,
+                  textCapitalization: TextCapitalization.sentences,
+                  onChanged: (_) => onTyping?.call(),
+                  style: TextStyle(color: theme.text, fontSize: 15),
+                  decoration: InputDecoration(
+                    hintText: theme.placeholder,
+                    hintStyle: TextStyle(color: theme.muted),
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.fromLTRB(onEmoji == null ? 16 : 2, 13, onAttach == null ? 16 : 2, 13),
+                  ),
+                ),
               ),
-            ),
+              if (onAttach != null)
+                Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: _inBox(BanimarkChat.attachKey, attachSpot, 'Attach a file', Icons.attach_file_rounded, onAttach!),
+                ),
+            ]),
           ),
         ),
         const SizedBox(width: 8),
         // while a reply is on its way the typing dots say so; the button just rests
         AnimatedOpacity(
+          key: sendSpot,
           opacity: busy ? .5 : 1,
           duration: const Duration(milliseconds: 150),
           child: Material(
@@ -652,7 +756,7 @@ class _Composer extends StatelessWidget {
             child: InkWell(
               customBorder: const CircleBorder(),
               onTap: busy ? null : onSend,
-              child: SizedBox(width: 44, height: 44, child: Icon(theme.sendIcon, color: theme.onPrimary)),
+              child: SizedBox(width: 48, height: 48, child: Icon(theme.sendIcon, color: theme.onPrimary)),
             ),
           ),
         ),

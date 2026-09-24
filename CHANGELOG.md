@@ -1,3 +1,15 @@
+## 0.3.0
+
+- **A roomier message bar.** The emoji button now sits inside the box on the
+  left and the paperclip inside it on the right, so the text gets almost the
+  whole width. Both stay on the last line as the message grows.
+- **First-run tour** (`showTour: true` on `BanimarkChat` or
+  `BanimarkLauncher`, off by default). It points out the emoji, paperclip,
+  send and delete buttons, one at a time. Each spot is shown once per device,
+  and the bin waits until there is a conversation. The words are on
+  `BanimarkTheme` (`tourEmoji`, `tourAttach`, `tourSend`, `tourDelete`,
+  `tourNext`, `tourDone`, `tourSkip`). `BanimarkChat.resetTour()` shows it again.
+
 ## 0.2.2
 
 - **The keyboard no longer covers the message box.** The chat lifts itself
