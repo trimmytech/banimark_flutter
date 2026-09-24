@@ -16,7 +16,6 @@ export 'src/client.dart';
 export 'src/controller.dart';
 export 'src/theme.dart';
 export 'src/appearance.dart';
-export 'src/emoji.dart';
 export 'src/markdown.dart';
 export 'src/chat_widget.dart';
 export 'src/launcher.dart';

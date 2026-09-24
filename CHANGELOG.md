@@ -1,3 +1,13 @@
+## 0.4.0
+
+- **The emoji button is gone.** The device keyboard has emoji, so the message
+  box gets the width instead: only the paperclip sits inside it, on the right.
+- `emoji:` on `BanimarkChat` / `BanimarkLauncher` still compiles but does
+  nothing (deprecated).
+- Removed: `BanimarkEmojiPicker`, and the tour's emoji step with its text
+  (`BanimarkTheme.tourEmoji`). The tour now points out the paperclip, send and
+  delete buttons.
+
 ## 0.3.0
 
 - **A roomier message bar.** The emoji button now sits inside the box on the

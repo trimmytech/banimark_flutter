@@ -77,6 +77,7 @@ class BanimarkLauncher extends StatefulWidget {
 
   // passed through to the default BanimarkChat
   final bool askGuestDetails;
+  @Deprecated('The emoji button was removed in 0.4.0; the keyboard has emoji. This does nothing.')
   final bool emoji;
   final bool attachments;
   final void Function(Uri uri)? onOpenLink;
@@ -103,7 +104,7 @@ class BanimarkLauncher extends StatefulWidget {
     this.storageKey = 'banimark_launcher',
     this.navigatorKey,
     this.askGuestDetails = true,
-    this.emoji = true,
+    @Deprecated('The emoji button was removed in 0.4.0; the keyboard has emoji. This does nothing.') this.emoji = true,
     this.attachments = true,
     this.onOpenLink,
     this.showTour = false,
@@ -242,7 +243,6 @@ class _BanimarkLauncherState extends State<BanimarkLauncher> {
                 controller: _c,
                 followAdminAppearance: widget.followAdminAppearance,
                 askGuestDetails: widget.askGuestDetails,
-                emoji: widget.emoji,
                 attachments: widget.attachments,
                 onOpenLink: widget.onOpenLink,
                 showTour: widget.showTour,

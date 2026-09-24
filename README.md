@@ -61,11 +61,11 @@ MaterialApp(
 ### First-run tour
 
 Pass `showTour: true` (on `BanimarkChat` or `BanimarkLauncher`) and the first
-time the chat opens on a device it points out the emoji, paperclip and send
-buttons, one at a time. The delete bin is explained later, once there is a
+time the chat opens on a device it points out the paperclip and send buttons,
+one at a time. The delete bin is explained later, once there is a
 conversation to delete. Each spot is shown once per device; `Skip` ends the
-tour for good. Change the words on `BanimarkTheme` (`tourEmoji`, `tourAttach`,
-`tourSend`, `tourDelete`, `tourNext`, `tourDone`, `tourSkip`), and call
+tour for good. Change the words on `BanimarkTheme` (`tourAttach`, `tourSend`,
+`tourDelete`, `tourNext`, `tourDone`, `tourSkip`), and call
 `BanimarkChat.resetTour()` to show it again.
 
 ```dart

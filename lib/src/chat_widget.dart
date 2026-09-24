@@ -8,7 +8,6 @@ import 'controller.dart';
 import 'models.dart';
 import 'theme.dart';
 import 'appearance.dart';
-import 'emoji.dart';
 import 'markdown.dart';
 import 'tour.dart';
 
@@ -35,7 +34,8 @@ class BanimarkChat extends StatefulWidget {
   /// signed token identifies the visitor).
   final bool askGuestDetails;
 
-  /// Show the emoji keyboard button.
+  /// No longer used: the chat has no emoji button - the device keyboard has emoji.
+  @Deprecated('The emoji button was removed in 0.4.0; the keyboard has emoji. This does nothing.')
   final bool emoji;
 
   /// Show the paperclip. The desk can also switch files off for everyone.
@@ -53,10 +53,10 @@ class BanimarkChat extends StatefulWidget {
   /// title, greeting, light/dark) and apply it over [theme]/[themeMode].
   final bool followAdminAppearance;
 
-  /// First time the chat opens on a device, point out the emoji, paperclip,
-  /// send and delete buttons, one at a time. Each spot is shown once; the bin
+  /// First time the chat opens on a device, point out the paperclip, send and
+  /// delete buttons, one at a time. Each spot is shown once; the bin
   /// waits until there is a conversation to delete. Texts are on [BanimarkTheme]
-  /// (`tourEmoji`, `tourAttach`, ...).
+  /// (`tourAttach`, `tourSend`, ...).
   final bool showTour;
 
   /// Device storage key for which tour spots were seen. Reset it with
@@ -68,7 +68,6 @@ class BanimarkChat extends StatefulWidget {
   /// Show the tour again next time the chat opens.
   static Future<void> resetTour([String storageKey = defaultTourKey]) => BanimarkTourMemory(storageKey).reset();
 
-  static const Key emojiKey = Key('banimark-emoji');
   static const Key attachKey = Key('banimark-attach');
 
   const BanimarkChat({
@@ -83,7 +82,7 @@ class BanimarkChat extends StatefulWidget {
     this.askGuestDetails = true,
     this.themeMode = ThemeMode.system,
     this.followAdminAppearance = false,
-    this.emoji = true,
+    @Deprecated('The emoji button was removed in 0.4.0; the keyboard has emoji. This does nothing.') this.emoji = true,
     this.attachments = true,
     this.onOpenLink,
     this.showTour = false,
@@ -101,10 +100,8 @@ class _BanimarkChatState extends State<BanimarkChat> {
   final _scroll = ScrollController();
   final _focus = FocusNode();
   BanimarkMode? _lastMode;
-  bool _emojiOpen = false;
 
   // what the tour points at
-  final _emojiSpot = GlobalKey(debugLabel: 'banimark-tour-emoji');
   final _attachSpot = GlobalKey(debugLabel: 'banimark-tour-attach');
   final _sendSpot = GlobalKey(debugLabel: 'banimark-tour-send');
   final _deleteSpot = GlobalKey(debugLabel: 'banimark-tour-delete');
@@ -144,13 +141,11 @@ class _BanimarkChatState extends State<BanimarkChat> {
     final t = _input.text;
     if (t.trim().isEmpty && _c.pending.isEmpty) return;
     _input.clear();
-    setState(() => _emojiOpen = false);
     await _c.send(t);
     _focus.requestFocus();
   }
 
   Future<void> _pickFile() async {
-    setState(() => _emojiOpen = false);
     final picked = await FilePicker.platform.pickFiles(withData: true);
     if (picked == null || picked.files.isEmpty) return;
     final f = picked.files.first;
@@ -216,7 +211,6 @@ class _BanimarkChatState extends State<BanimarkChat> {
       if (!_lookReady || _c.loading || _c.thinking || MediaQuery.viewInsetsOf(context).bottom > 0) return;
       final t = _t;
       final steps = [
-        BanimarkTourStep(id: 'emoji', target: _emojiSpot, text: t.tourEmoji),
         BanimarkTourStep(id: 'attach', target: _attachSpot, text: t.tourAttach),
         BanimarkTourStep(id: 'send', target: _sendSpot, text: t.tourSend),
         BanimarkTourStep(id: 'delete', target: _deleteSpot, text: t.tourDelete),
@@ -233,7 +227,7 @@ class _BanimarkChatState extends State<BanimarkChat> {
             _tour?.remove();
             _tour = null;
             // skipping means "no tour", including the spots still to come
-            final ids = skipped ? const ['emoji', 'attach', 'send', 'delete'] : steps.map((s) => s.id);
+            final ids = skipped ? const ['attach', 'send', 'delete'] : steps.map((s) => s.id);
             _tourSeen!.addAll(ids);
             BanimarkTourMemory(widget.tourStorageKey).markSeen(ids);
           },
@@ -318,20 +312,9 @@ class _BanimarkChatState extends State<BanimarkChat> {
           if (_c.mode != BanimarkMode.closed)
             _Composer(
               theme: t, controller: _input, focus: _focus, onSend: _send, busy: _c.thinking, onTyping: _c.typing,
-              onEmoji: widget.emoji ? () => setState(() => _emojiOpen = !_emojiOpen) : null,
               onAttach: widget.attachments ? _pickFile : null,
-              emojiOpen: _emojiOpen,
-              emojiSpot: _emojiSpot, attachSpot: _attachSpot, sendSpot: _sendSpot,
+              attachSpot: _attachSpot, sendSpot: _sendSpot,
             ),
-          if (_emojiOpen && widget.emoji)
-            BanimarkEmojiPicker(theme: t, onPick: (e) {
-              final sel = _input.selection;
-              final at = sel.start < 0 ? _input.text.length : sel.start;
-              final end = sel.end < 0 ? at : sel.end;
-              _input.text = _input.text.replaceRange(at, end, e);
-              _input.selection = TextSelection.collapsed(offset: at + e.length);
-              setState(() {});
-            }),
         ],
       ),
     );
@@ -668,8 +651,8 @@ class _ErrorBar extends StatelessWidget {
       );
 }
 
-/// The message bar: emoji on the left and paperclip on the right INSIDE the
-/// box, so the text gets the whole width; the send button beside it.
+/// The message bar: the paperclip INSIDE the box on the right, so the text
+/// gets the width; the send button beside it. Emoji come from the keyboard.
 class _Composer extends StatelessWidget {
   final BanimarkTheme theme;
   final TextEditingController controller;
@@ -677,12 +660,10 @@ class _Composer extends StatelessWidget {
   final VoidCallback onSend;
   final bool busy;
   final VoidCallback? onTyping;
-  final VoidCallback? onEmoji;
   final VoidCallback? onAttach;
-  final bool emojiOpen;
-  final GlobalKey? emojiSpot, attachSpot, sendSpot;
+  final GlobalKey? attachSpot, sendSpot;
   const _Composer({required this.theme, required this.controller, required this.focus, required this.onSend, required this.busy,
-      this.onTyping, this.onEmoji, this.onAttach, this.emojiOpen = false, this.emojiSpot, this.attachSpot, this.sendSpot});
+      this.onTyping, this.onAttach, this.attachSpot, this.sendSpot});
 
   Widget _inBox(Key key, GlobalKey? spot, String tip, IconData icon, VoidCallback onTap) => KeyedSubtree(
         key: spot,
@@ -708,12 +689,6 @@ class _Composer extends StatelessWidget {
             decoration: BoxDecoration(color: theme.background, borderRadius: BorderRadius.circular(theme.inputRadius), border: Border.all(color: theme.border)),
             // icons sit on the last line as the text grows
             child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              if (onEmoji != null)
-                Padding(
-                  padding: const EdgeInsets.only(left: 4),
-                  child: _inBox(BanimarkChat.emojiKey, emojiSpot, 'Emoji',
-                      emojiOpen ? Icons.keyboard_rounded : Icons.emoji_emotions_outlined, onEmoji!),
-                ),
               Expanded(
                 child: TextField(
                   controller: controller,
@@ -731,7 +706,7 @@ class _Composer extends StatelessWidget {
                     hintStyle: TextStyle(color: theme.muted),
                     border: InputBorder.none,
                     isDense: true,
-                    contentPadding: EdgeInsets.fromLTRB(onEmoji == null ? 16 : 2, 13, onAttach == null ? 16 : 2, 13),
+                    contentPadding: EdgeInsets.fromLTRB(16, 13, onAttach == null ? 16 : 2, 13),
                   ),
                 ),
               ),

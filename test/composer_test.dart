@@ -60,15 +60,14 @@ void main() {
     expect(find.descendant(of: send, matching: find.byType(Icon)), findsOneWidget);
   });
 
-  testWidgets('emoji and paperclip sit inside the box, so the text gets the width', (tester) async {
+  testWidgets('no emoji button; the paperclip sits inside the box, so the text gets the width', (tester) async {
     final c = await ready(tester, 'ct4');
     await tester.pumpWidget(sheet(c));
+    expect(find.byIcon(Icons.emoji_emotions_outlined), findsNothing, reason: 'the keyboard has emoji');
     final box = tester.getRect(find.byType(TextField));
-    final emoji = tester.getRect(find.byKey(BanimarkChat.emojiKey));
     final clip = tester.getRect(find.byKey(BanimarkChat.attachKey));
-    expect(emoji.right, lessThanOrEqualTo(box.left + 1), reason: 'emoji on the left');
     expect(clip.left, greaterThanOrEqualTo(box.right - 1), reason: 'paperclip on the right');
-    expect(box.width, greaterThan(tester.view.physicalSize.width / tester.view.devicePixelRatio * .55));
+    expect(box.width, greaterThan(tester.view.physicalSize.width / tester.view.devicePixelRatio * .65));
   });
 
   group('first-run tour', () {
@@ -86,9 +85,6 @@ void main() {
       final c = await ready(tester, 'tt1');
       await tester.pumpWidget(chat(c));
       await tester.runAsync(() => Future.delayed(const Duration(milliseconds: 50)));
-      await tester.pump();
-      expect(find.text(BanimarkTheme.light.tourEmoji), findsOneWidget);
-      await tester.tap(find.byKey(BanimarkTourOverlay.nextKey));
       await tester.pump();
       expect(find.text(BanimarkTheme.light.tourAttach), findsOneWidget);
       await tester.tap(find.byKey(BanimarkTourOverlay.nextKey));
@@ -116,11 +112,11 @@ void main() {
       await tester.pump();
       expect(find.byType(BanimarkTourOverlay), findsNothing);
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getStringList(BanimarkChat.defaultTourKey), containsAll(['emoji', 'attach', 'send', 'delete']));
+      expect(prefs.getStringList(BanimarkChat.defaultTourKey), containsAll(['attach', 'send', 'delete']));
     });
 
     testWidgets('the bin is explained once there is a conversation', (tester) async {
-      SharedPreferences.setMockInitialValues({'tt3': 'sess', BanimarkChat.defaultTourKey: ['emoji', 'attach', 'send']});
+      SharedPreferences.setMockInitialValues({'tt3': 'sess', BanimarkChat.defaultTourKey: ['attach', 'send']});
       final c = BanimarkController(
         config: cfg,
         storageKey: 'tt3',
