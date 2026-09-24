@@ -3,14 +3,18 @@ import 'package:flutter/material.dart';
 
 void main() => runApp(const DemoApp());
 
+final _nav = GlobalKey<NavigatorState>();
+
 class DemoApp extends StatelessWidget {
   const DemoApp({super.key});
   @override
   Widget build(BuildContext context) => MaterialApp(
         theme: ThemeData(colorSchemeSeed: const Color(0xFF2A78D6), useMaterial3: true),
         // the floating bubble over the whole app: unread count, draggable, dismissible
+        navigatorKey: _nav,
         builder: (context, child) => BanimarkLauncher(
           config: BanimarkConfig.laravel('http://127.0.0.1:8001', token: null),
+          navigatorKey: _nav, // the builder sits above the Navigator - the bubble opens the chat through this
           child: child ?? const SizedBox.shrink(),
         ),
         home: Scaffold(

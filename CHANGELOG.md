@@ -1,4 +1,17 @@
+## 0.2.1
+
+- **Android builds on API 36 again.** `file_picker` moves to `^10.3.3`, which
+  compiles against Flutter's `compileSdkVersion` instead of a hardcoded 34;
+  8.x failed `checkDebugAarMetadata` once `flutter_plugin_android_lifecycle`
+  started requiring compileSdk 36.
+
 ## 0.2.0
+
+- **`BanimarkLauncher(navigatorKey: ...)`** - needed when the bubble wraps the
+  whole app through `MaterialApp.builder`, which sits above the Navigator:
+  without it the tap had nowhere to open the chat (found by the test app).
+  Give the same key to `MaterialApp(navigatorKey: ...)`. Wrapping a single
+  screen needs nothing.
 
 - **The visitor can delete their conversation.** A bin in the header (shown
   once there is a conversation) asks first, then clears the chat and starts

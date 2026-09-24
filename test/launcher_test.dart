@@ -134,6 +134,22 @@ void main() {
     expect(c.active, isFalse);
   });
 
+  testWidgets('above the Navigator (MaterialApp.builder) it opens the chat through navigatorKey', (tester) async {
+    final nav = GlobalKey<NavigatorState>();
+    final c = controller();
+    await tester.pumpWidget(MaterialApp(
+      navigatorKey: nav,
+      builder: (context, child) => BanimarkLauncher(config: cfg, controller: c, followAdminAppearance: false, navigatorKey: nav, child: child!),
+      home: const Scaffold(body: Text('home')),
+    ));
+    await tester.pump();
+    await tester.tap(find.byKey(BanimarkLauncher.bubbleKey));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(tester.takeException(), isNull);
+    expect(find.byType(BanimarkChat), findsOneWidget);
+  });
+
   test('the desk\'s intervals and reappear time travel with the look', () async {
     final a = (await BanimarkAppearance.fetch(cfg, client: MockClient((_) async => http.Response(jsonEncode({'poll_seconds': 7, 'poll_idle_seconds': 45, 'launcher_reappear_minutes': 20}), 200))))!;
     expect(a.pollEvery, const Duration(seconds: 7));

@@ -1,6 +1,6 @@
 name: banimark_flutter
 description: Drop-in chat widget and API client for a Banimark AI support desk (self-hosted, Laravel or standalone).
-version: 0.2.0
+version: 0.2.1
 homepage:  https://banimark.com
 repository: https://github.com/trimmytech/banimark_flutter
 issue_tracker: https://github.com/trimmytech/banimark_flutter/issues
@@ -16,7 +16,7 @@ dependencies:
   http: ^1.2.0
   shared_preferences: ^2.2.0
   # picking a file to attach; everything else (emoji, bubbles) is built in
-  file_picker: ^8.1.2
+  file_picker: ^10.3.3
   # opening a tapped link in the device browser (the default onOpenLink)
   url_launcher: ^6.2.0
 

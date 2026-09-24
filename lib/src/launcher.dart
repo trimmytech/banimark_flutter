@@ -69,6 +69,12 @@ class BanimarkLauncher extends StatefulWidget {
   /// Device storage key for the spot and the "come back at" time.
   final String storageKey;
 
+  /// REQUIRED when the launcher wraps the whole app through
+  /// `MaterialApp.builder`: that spot is ABOVE the app's Navigator, so the
+  /// bubble cannot open the chat sheet from its own context. Give the same key
+  /// to `MaterialApp(navigatorKey: …)`. Not needed when it wraps a screen.
+  final GlobalKey<NavigatorState>? navigatorKey;
+
   // passed through to the default BanimarkChat
   final bool askGuestDetails;
   final bool emoji;
@@ -93,6 +99,7 @@ class BanimarkLauncher extends StatefulWidget {
     this.dismissible = true,
     this.bubbleBuilder,
     this.storageKey = 'banimark_launcher',
+    this.navigatorKey,
     this.askGuestDetails = true,
     this.emoji = true,
     this.attachments = true,
@@ -199,6 +206,12 @@ class _BanimarkLauncherState extends State<BanimarkLauncher> {
 
   Future<void> _open(BuildContext context) async {
     if (_chatOpen) return;
+    // above the Navigator (MaterialApp.builder) the sheet needs the app's navigator context
+    context = widget.navigatorKey?.currentContext ?? context;
+    if (Navigator.maybeOf(context) == null) {
+      assert(false, 'BanimarkLauncher is above the Navigator: pass navigatorKey (the same key as MaterialApp.navigatorKey).');
+      return;
+    }
     _chatOpen = true;
     _c.markRead();
     _c.setActive(true);

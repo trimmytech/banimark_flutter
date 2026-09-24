@@ -47,6 +47,17 @@ overrides; `Duration.zero` = not until the app is opened again), and straight
 away when a reply arrives. Tapping it opens `BanimarkChat` in a bottom sheet;
 pass `onOpen:` to open it your own way with the same controller.
 
+Wrapping every screen through `MaterialApp.builder`? That spot is above the
+app's Navigator, so give the launcher and the app the same key:
+
+```dart
+final nav = GlobalKey<NavigatorState>();
+MaterialApp(
+  navigatorKey: nav,
+  builder: (context, child) => BanimarkLauncher(config: cfg, navigatorKey: nav, child: child!),
+)
+```
+
 ### Deleting a conversation
 
 The header has a bin once a conversation exists: the visitor confirms, the
