@@ -1,3 +1,21 @@
+## 0.2.2
+
+- **The keyboard no longer covers the message box.** The chat lifts itself
+  above the keyboard wherever it sits - the launcher's bottom sheet, a dialog,
+  a tab. Inside a Scaffold that already resizes, nothing changes.
+- **The message box takes several lines.** Enter starts a new line; the send
+  button sends. It grows to six lines, then scrolls.
+- **No spinner on the send button.** While a reply is on its way the typing
+  dots say so; the button just dims until it arrives.
+- **No colour flash when the chat opens.** The desk's look is kept - in memory
+  for this run and on the device for the next - so the chat and the launcher
+  paint in the desk's colours from the first frame. On the very first open
+  the chat waits for the look instead of showing the default colours first.
+  New: `BanimarkAppearance.cached(config)` and `BanimarkAppearance.stored(config)`.
+- Deleting a conversation on a desk that does not have the route (an older
+  Banimark, or a Laravel route cache from before its update) now says
+  "not available on this support desk yet" instead of "try again".
+
 ## 0.2.1
 
 - **Android builds on API 36 again.** `file_picker` moves to `^10.3.3`, which

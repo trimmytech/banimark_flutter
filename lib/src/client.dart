@@ -108,6 +108,11 @@ class BanimarkClient {
       headers: _headers,
       body: jsonEncode({'session_id': sessionId, 'token': config.token ?? ''}),
     );
+    // the desk does not have the route: an older Banimark, or a Laravel route
+    // cache from before the update - "try again" would never help
+    if (res.statusCode == 404) {
+      throw const BanimarkException('Deleting conversations is not available on this support desk yet.');
+    }
     return _decode(res)['ok'] == true;
   }
 

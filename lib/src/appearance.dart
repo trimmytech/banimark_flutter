@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'config.dart';
 import 'theme.dart';
@@ -53,14 +54,52 @@ class BanimarkAppearance {
       this.statusLine, this.awayNote, this.logo, this.corner = 'rounded', this.compact = false, this.sound = true,
       this.enabled = true, this.pollEvery, this.idlePollEvery, this.reappearAfter});
 
+  /// The last look read in this app run, per desk - so a chat opened after the
+  /// launcher (or a second time) paints in the desk's colours from its first
+  /// frame instead of flashing the default theme.
+  static final Map<String, BanimarkAppearance> _memory = {};
+  static String _key(BanimarkConfig config) => config.chat.toString();
+  static String _storeKey(BanimarkConfig config) => 'banimark_appearance_${_key(config)}';
+
+  /// What this app run already fetched for [config], if anything.
+  static BanimarkAppearance? cached(BanimarkConfig config) => _memory[_key(config)];
+
+  /// The look saved on the device by an earlier run (null on a first run).
+  static Future<BanimarkAppearance?> stored(BanimarkConfig config) async {
+    try {
+      final raw = (await SharedPreferences.getInstance()).getString(_storeKey(config));
+      return raw == null ? null : _parse(config, raw);
+    } catch (_) {
+      return null;
+    }
+  }
+
   static Future<BanimarkAppearance?> fetch(BanimarkConfig config, {http.Client? client}) async {
     final c = client ?? http.Client();
     try {
       // …/banimark/chat  ->  …/banimark/widget/appearance   (…/chat -> …/widget/appearance standalone)
       final base = config.chat.toString().replaceFirst(RegExp(r'/chat$'), '');
-      final res = await c.get(Uri.parse('$base/widget/appearance'), headers: {'Accept': 'application/json', ...config.headers});
+      final res = await c
+          .get(Uri.parse('$base/widget/appearance'), headers: {'Accept': 'application/json', ...config.headers})
+          .timeout(const Duration(seconds: 10));
       if (res.statusCode != 200) return null;
-      final j = jsonDecode(res.body);
+      final a = _parse(config, res.body);
+      if (a == null) return null;
+      _memory[_key(config)] = a;
+      try {
+        await (await SharedPreferences.getInstance()).setString(_storeKey(config), res.body);
+      } catch (_) {}
+      return a;
+    } catch (_) {
+      return null;
+    } finally {
+      if (client == null) c.close();
+    }
+  }
+
+  static BanimarkAppearance? _parse(BanimarkConfig config, String body) {
+    try {
+      final j = jsonDecode(body);
       if (j is! Map<String, dynamic>) return null;
       return BanimarkAppearance(
         primary: _hex(j['color']?.toString()),
@@ -89,8 +128,6 @@ class BanimarkAppearance {
       );
     } catch (_) {
       return null;
-    } finally {
-      if (client == null) c.close();
     }
   }
 

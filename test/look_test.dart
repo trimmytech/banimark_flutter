@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:banimark_flutter/banimark_flutter.dart';
 
 /// The owner's look (Widget page) reaches the app as it reaches the website:
@@ -12,6 +13,7 @@ void main() {
       (await BanimarkAppearance.fetch(cfg, client: MockClient((_) async => http.Response(jsonEncode(body), 200))))!;
 
   final laravel = BanimarkConfig.laravel('https://app.test/');
+  setUp(() => SharedPreferences.setMockInitialValues({}));
 
   test('the look travels: status line, corners, spacing, sound, logo', () async {
     final a = await fetch(laravel, {
@@ -69,5 +71,13 @@ void main() {
     await tester.pump();
     // test HTTP answers 400 to every image request, so this is the failure path
     expect(find.byIcon(Icons.chat_bubble_rounded), findsOneWidget);
+  });
+
+  test('the look is kept, so a chat opened later paints in it from the first frame', () async {
+    final cfg = BanimarkConfig.laravel('https://kept.test/');
+    expect(BanimarkAppearance.cached(cfg), isNull);
+    await fetch(cfg, {'color': '#123456'});
+    expect(BanimarkAppearance.cached(cfg)?.primary, const Color(0xFF123456), reason: 'this run');
+    expect((await BanimarkAppearance.stored(cfg))?.primary, const Color(0xFF123456), reason: 'the next run, before the network answers');
   });
 }

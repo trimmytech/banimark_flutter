@@ -90,6 +90,8 @@ class _BanimarkChatState extends State<BanimarkChat> {
     _heard = _c.unread;
     _c.addListener(_onChange);
     if (_ownsController) _c.init();
+    if (widget.followAdminAppearance) _appearance = BanimarkAppearance.cached(widget.config);
+    _lookReady = !widget.followAdminAppearance || _appearance != null;
     _loadAppearance();
   }
 
@@ -127,6 +129,9 @@ class _BanimarkChatState extends State<BanimarkChat> {
   }
 
   BanimarkAppearance? _appearance;
+  /// false until the desk's look is known (cache, device or network), so the
+  /// chat never paints in the default colours and then switches
+  bool _lookReady = true;
 
   BanimarkTheme get _t {
     final a = _appearance;
@@ -158,8 +163,16 @@ class _BanimarkChatState extends State<BanimarkChat> {
 
   Future<void> _loadAppearance() async {
     if (!widget.followAdminAppearance) return;
+    if (_appearance == null) {
+      final saved = await BanimarkAppearance.stored(widget.config);
+      if (mounted && saved != null) setState(() { _appearance = saved; _lookReady = true; });
+    }
     final a = await BanimarkAppearance.fetch(widget.config);
-    if (mounted && a != null) setState(() => _appearance = a);
+    if (!mounted) return;
+    setState(() {
+      if (a != null) _appearance = a;
+      _lookReady = true;
+    });
   }
 
   @override
@@ -174,7 +187,22 @@ class _BanimarkChatState extends State<BanimarkChat> {
 
   @override
   Widget build(BuildContext context) {
+    // above the keyboard wherever the chat sits (a sheet, a dialog, a tab). A
+    // Scaffold that already resizes removes the inset first, so it never doubles.
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: _body(context),
+    );
+  }
+
+  Widget _body(BuildContext context) {
     final t = _t;
+    if (!_lookReady) {
+      return Material(
+        color: t.background,
+        child: Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: t.muted))),
+      );
+    }
     final handover = _lastMode != null && _lastMode != BanimarkMode.agent && _c.mode == BanimarkMode.agent;
     _lastMode = _c.mode;
     if (handover) WidgetsBinding.instance.addPostFrameCallback((_) => _toBottom());
@@ -596,10 +624,12 @@ class _Composer extends StatelessWidget {
               controller: controller,
               focusNode: focus,
               minLines: 1,
-              maxLines: 5,
-              textInputAction: TextInputAction.send,
+              maxLines: 6,
+              // Enter adds a line; the button sends
+              keyboardType: TextInputType.multiline,
+              textInputAction: TextInputAction.newline,
+              textCapitalization: TextCapitalization.sentences,
               onChanged: (_) => onTyping?.call(),
-              onSubmitted: (_) => onSend(),
               style: TextStyle(color: theme.text, fontSize: 15),
               decoration: InputDecoration(
                 hintText: theme.placeholder,
@@ -611,21 +641,18 @@ class _Composer extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        AnimatedScale(
-          scale: busy ? .92 : 1,
+        // while a reply is on its way the typing dots say so; the button just rests
+        AnimatedOpacity(
+          opacity: busy ? .5 : 1,
           duration: const Duration(milliseconds: 150),
           child: Material(
+            key: const Key('banimark-send'),
             color: theme.primary,
             shape: const CircleBorder(),
             child: InkWell(
               customBorder: const CircleBorder(),
               onTap: busy ? null : onSend,
-              child: SizedBox(
-                width: 44, height: 44,
-                child: busy
-                    ? Padding(padding: const EdgeInsets.all(13), child: CircularProgressIndicator(strokeWidth: 2, color: theme.onPrimary))
-                    : Icon(theme.sendIcon, color: theme.onPrimary),
-              ),
+              child: SizedBox(width: 44, height: 44, child: Icon(theme.sendIcon, color: theme.onPrimary)),
             ),
           ),
         ),

@@ -172,6 +172,9 @@ class _BanimarkLauncherState extends State<BanimarkLauncher> {
   }
 
   Future<void> _loadAppearance() async {
+    // last run's look first, so the bubble does not start in the default colour
+    _app = BanimarkAppearance.cached(widget.config) ?? await BanimarkAppearance.stored(widget.config);
+    if (mounted && _app != null) setState(() {});
     final a = await BanimarkAppearance.fetch(widget.config);
     if (!mounted || a == null) return;
     _c.setIntervals(open: a.pollEvery, idle: widget.idlePollEvery ?? a.idlePollEvery);

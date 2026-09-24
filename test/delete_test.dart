@@ -53,6 +53,19 @@ void main() {
     c.dispose();
   });
 
+  test('a desk without the route (older, or a stale route cache) says so, not "try again"', () async {
+    SharedPreferences.setMockInitialValues({'dt5': sid});
+    final c = BanimarkController(config: cfg, storageKey: 'dt5', client: BanimarkClient(cfg, httpClient: MockClient((req) async {
+      if (req.url.path.endsWith('/chat/delete')) return http.Response(jsonEncode({'message': 'The route banimark/chat/delete could not be found.'}), 404);
+      return http.Response(jsonEncode({'ok': true, 'session_id': sid, 'messages': [], 'mode': 'ai'}), 200);
+    })));
+    await c.init();
+    expect(await c.deleteConversation(), isFalse);
+    expect(c.error, contains('not available on this support desk yet'));
+    expect(c.sessionId, sid, reason: 'nothing was deleted, so nothing is forgotten');
+    c.dispose();
+  });
+
   testWidgets('the bin asks first, then clears the chat', (tester) async {
     SharedPreferences.setMockInitialValues({'dt3': sid});
     final c = BanimarkController(config: cfg, client: BanimarkClient(cfg, httpClient: desk([])), storageKey: 'dt3');
